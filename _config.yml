@@ -1,1 +1,20 @@
+title: Federgraph's blog
+author: Gustav Schubert
+email: gschub@googlemail.com
+description: >- # this means to ignore newlines until "baseurl:"
+  occasional posts by Gustav Schubert
+baseurl: ""  # the subpath of your site, e.g. /blog
+url: https://federgraph.github.io
+twitter_username: federgraph
+github_username: federgraph
+facebook_username: federgraph
+repository: federgraph/federgraph.github.io
+permalink: /:title:output_ext
+github: [metadata]
+
+# Build settings
+markdown: kramdown
 theme: jekyll-theme-cayman
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
