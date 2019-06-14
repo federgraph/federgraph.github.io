@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Bilder im Holzrahmen"
-tags: RG SK
+tags: RG
 description: "I will limit myself to just one."
 lang: en_US
 ---
