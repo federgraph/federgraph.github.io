@@ -161,7 +161,7 @@ do this when resize has ended.
 
 > Nice that I have an OnResizeEnd event.
 
-```
+```pascal
 procedure TCommonCustomForm.Resize;
 begin
   if Assigned(FOnResize) then
@@ -176,6 +176,16 @@ begin
 end;
 ```
 
+```pascal
+unit FMX.Platform.Win;
+  function WndProc
+
+          WM_EXITSIZEMOVE:
+            begin
+              LForm.DoResizeEnd;
+            end;
+
+```
 You will have more confidence that the application will survive wild excessive resizing by the end user
 who does not seem to feel the pain.
 
