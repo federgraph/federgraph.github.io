@@ -199,3 +199,123 @@ But remember:
 > There is a potential problem with resizing a TViewport3D in 10.3 and before !
 
 Hew, Hu, huh, ... , Hue! Are you scared now, of using FMX?
+
+## Testing with OSX 64 Bit target in Delphi, version 10.3.2
+
+My attempts to have smoother resizing was done with Berlin and Tokyo releases of Delphi.
+But now in July 2019, with the OSX 64 Bit compiler available in the 10.3.2 release, I revisited my project and
+
+- merged my changes with the latest code from Embarcadero,
+- compiled for and tested on OSX,
+- noticed a crash when resizing the app.
+
+> But was able to fix it !
+
+First, instead of letting the application crash I decided to do some logging instead of raising an exception.
+
+```pascal
+procedure TContextOpenGL.DoResize;
+  // ...
+  Status := glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+  if Status <> GL_FRAMEBUFFER_COMPLETE_EXT then
+  begin
+    log.d('in DoResize 1');
+    raise_(EContext3DException.CreateResFmt(@SCannotCreateRenderBuffers, [ClassName]));
+  end;
+  // ...
+end;
+```
+
+It was done with a quick and dirty special *instrumentation* in the unit:
+
+````pascal
+const
+  WantRaise = False;
+
+procedure raise_(e: Exception);
+begin
+  if WantRaise then
+    raise e
+  else
+    log.d(e.Message);
+end;
+```
+
+Then I could easily see when and where and why the app was crashing.
+
+I will spare you most of the details, except that the call stack shows where the problem is coming from.
+
+```
+SCannotCreateRenderBuffers was raised/logged
+when user is resizing the app window by dragging the corner with the mouse,
+or when maximizing or restoring the app window.
+
+OSX64 target: I see log messages in IDE messages window (Windows computer).
+Render-Puffer für 'TContextOpenGL' können nicht erstellt werden. Prozess RG11 (729)
+
+OSX32 target: I see log messages in PAServer window (Mac).
+Render-Puffer für 'TContextOpenGL' können nicht erstellt werden.
+
+Call stack below: I see this in the IDE tool window.
+
+FMX.Context.Mac.TContextOpenGL.DoResize // <-- the problem surfaces here
+FMX.Types3D.TContext3D.Resize
+FMX.Types3D.TContext3D.SetSize(2098,1546) // <-- but the fix in in here
+FMX.Viewport3D.TViewport3D.Resize
+FMX.Controls.TControl.HandleSizeChanged
+FMX.Controls.TControl.SizeChanged($60F4B10)
+FMX.Types.TControlSize.DoChange
+FMX.Types.TControlSize.SetSize((-1,99925327301025, 2,69504579622568e-35))
+FMX.Types.TControlSize.Assign($60F4990)
+FMX.Controls.TControl.SetSize($60F4990)
+FrmMain.TFormMain.DoOnResizeEnd
+FrmMain.TFormMain.DoOnResize
+FrmMain.TFormMain.FormResize($619D2E0)
+FMX.Forms.TCommonCustomForm.Resize
+FMX.Forms.TCommonCustomForm.SetBounds(749,79,1049,795)
+FMX.Platform.Mac.TFMXWindow.windowDidResize(Pointer($6E58BF0) as NSNotification)
+FMX.Platform.Mac.TFMXWindowDelegate.windowDidResize(Pointer($6E58BF0) as NSNotification)
+Macapi.ObjectiveC.DispatchToDelphi
+//...
+```
+
+The `Resize` method will call the virtual abstract `DoResize` method which has an empty implementation on the Windows platform.
+The implementation for GLES is also empty.
+But on the OSX platform DoResize is NOT empty.
+In the call stack you can see that the actual implementation in FMX.Context.Mac is called.
+
+From looking at TContext3D.SetSize it appears questionable that Resize is called after destroying buffers and before creating new buffers.
+Of course, this is abstract stuff and it might be ok, you can only find out by looking in the actual implementation.
+
+```pascal
+procedure TContext3D.SetSize(const AWidth, AHeight: Integer);
+begin
+  if (FWidth <> AWidth) or (FHeight <> AHeight) then
+  begin
+    FreeBuffer;
+    FWidth := AWidth;
+    FHeight := AHeight;
+    if FWidth < 1 then FWidth := 1;
+    if FHeight < 1 then FHeight := 1;
+    Resize; // <-- This is highly questionable, I would say.
+    // clear matrix state
+    FCurrentStates[TContextState.cs2DScene] := False;
+    FCurrentStates[TContextState.cs3DScene] := False;
+    //
+    CreateBuffer;
+  end;
+end;
+```
+
+> I did an intelligent guess, commented out the Resize method call, and voila, the problematic log messages disappeared !
+
+I am running my application (both 32 bit and 64 bit) on OSX without a problem,
+smooth-resizing is working,
+and I seem to have no knowledge of any remaining bugs right now.
+
+In versions of Delphi prior to 10.2.2 they created the exceptions but did not raise them,
+and I remember that I rolled back to not raising these exceptions when they started to raise them.
+But now, since I do no longer make the questionable Resize call in TContext3D, I could run with the original version of FMX.Context.Mac.
+
+Note to myself: This is something to monitor and keep in mind,
+need to watch them closely in order to be able to react and keep things working in the future.

@@ -5,6 +5,10 @@ tags: Delphi
 description: "How to properly minimize an FMX app via the taskbar icon."
 ---
 
+Update: They fixed the problem in Version 10.3.2.
+
+The blog post content below is relevant only to version 10.3.1 and older.
+
 # Fix for RSP-17322
 
 An update regarding my FMX minimize bug fix for Delphi Rio Community.
