@@ -18,7 +18,7 @@ Both are Delphi FMX applications which use a TViewport3D as the main component w
 at least most of the time.
 
 There have been problems with resizing the component.
-Note that I am writing a multiplatform HD application, not the 3D application.
+Note that I started with a multiplatform HD application, not the 3D application.
 There is a little difference between the two.
 I have always been using the HD application where the TViewport3D is a normal component on the form,
 and from here on I will just say Viewport.
@@ -152,7 +152,7 @@ As I have said above, it should do this only once when the application starts up
 > Use a draw counter to check.
 
 If it will draw a few times during startup this will probably be OK.
-And if find that resizing seems to work ok: this is good for you,
+If you find that resizing seems to work ok: good for you,
 but keep in mind that there might still be a problem.
 
 Back to alignment: Do not align.
@@ -196,20 +196,21 @@ and it turns out there is a show stopper problem when the context is recreated t
 You may not see this in a normal application.
 But remember:
 
-> There is a potential problem with resizing a TViewport3D in 10.3 and before !
-
-Hew, Hu, huh, ... , Hue! Are you scared now, of using FMX?
+> There is a potential problem with resizing a TViewport3D in 10.3 and before.
 
 ## Testing with OSX 64 Bit target in Delphi, version 10.3.2
 
-My attempts to have smoother resizing was done with Berlin and Tokyo releases of Delphi.
-But now in July 2019, with the OSX 64 Bit compiler available in the 10.3.2 release, I revisited my project and
+Ignore the original date of the blog post. This is a jekyll project and I can update any old post.
+I am writing this update in 2019, see the GitHub commit history for the actual date and time of any update. 
 
-- merged my changes with the latest code from Embarcadero,
-- compiled for and tested on OSX,
-- noticed a crash when resizing the app.
+Back to the topic: My earlier attempts to have smoother resizing were done with Berlin and Tokyo releases of Delphi.
+But now in July 2019, with the OSX 64 Bit compiler available in the 10.3.2 release, I revisited my projects and
 
-> But was able to fix it !
+- merged my existing modifications with the latest code from Embarcadero,
+- compiled for and tested on OSX platform,
+- and noticed a crash when resizing the app!
+
+> But was able to fix it.
 
 First, instead of letting the application crash I decided to do some logging instead of raising an exception.
 
