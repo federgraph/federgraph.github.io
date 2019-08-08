@@ -20,10 +20,10 @@ at least most of the time.
 There have been problems with resizing the component.
 Note that I started with a multiplatform HD application, not the 3D application.
 There is a little difference between the two.
-I have always been using the HD application where the TViewport3D is a normal component on the form,
-and from here on I will just say Viewport.
+I have always been using the HD application where the TViewport3D is a normal component on the form.
+From here on I will just say Viewport.
 
-The first problem is obvious when you look at the Resize method.
+The first problem is obvious when you look at the Resize method of the Viewport.
 The Viewport will by default destroy the current context and create a new one whenever the component is resized.
 
 ```pascal
@@ -74,7 +74,8 @@ begin
   ShowHint := True;
 //  Width := 100;
 //  Height := 100;
-... // rest of constructor ommited.
+
+... // rest of constructor omited.
 end;
 ```
 
@@ -99,7 +100,7 @@ You want to add FCopyBuffer to the list (`RSP-18850`).
 
 Then I was looking at the number of times resize is called during a manual resize of the application window with the mouse.
 I needed to handle a Windows message not handled so far and act only when resize has finished (WM_EXITSIZEMOVE, `RSP-18851`).
-You will always have a hard time debugging or finally improving something related to resizing if you do not have that.
+You will have a hard time debugging or finally improving something related to resizing if you do not have that.
 
 It is important that the Viewport is not client aligned and therefore not automatically resized.
 Just set the size of it whenever something has finished changing.
@@ -110,12 +111,10 @@ I will get back to alignment in a moment.
 > For some time, focus on application startup.
 
 How many times is the Viewport resized when the application starts up?
-It should be one.
-
-Turns out that Width and Height are set to a default size in the constructor (see snippet above) which triggers a resize.
+It should be one of course, but it turns out that Width and Height are set to a default size in the constructor (see snippet above) which triggers an unnecessary resize.
 I got rid of that (`RSP-17296`) and it felt much better.
-My application was aligned to the client area of the parent and did set the size of the Viewport to an area greater than zero.
 
+My application was aligned to the client area of the parent and did set the size of the Viewport to an area greater than zero.
 I found out that the second application behaved better than the first and why.
 In the process, I switched alignment to none which resulted in an interesting situation.
 
@@ -156,7 +155,7 @@ If you find that resizing seems to work ok: good for you,
 but keep in mind that there might still be a problem.
 
 Back to alignment: Do not align.
-Then size is not adjusted during a resize,
+Then size is not adjusted during a resize;
 do this when resize has ended.
 
 > Nice that I have an OnResizeEnd event.
@@ -191,7 +190,7 @@ who does not seem to feel the pain.
 
 My application uses a modified context class.
 It creates and uses a special buffer resource on the GPU
-and it turns out there is a show stopper problem when the context is recreated too often.
+and it turned out there is a show stopper problem when the context is recreated too often.
 
 You may not see this in a normal application.
 But remember:
@@ -204,13 +203,13 @@ Ignore the original date of the blog post. This is a jekyll project and I can up
 I am writing this update in 2019, see the GitHub commit history for the actual date and time of any update. 
 
 Back to the topic: My earlier attempts to have smoother resizing were done with Berlin and Tokyo releases of Delphi.
-But now in July 2019, with the OSX 64 Bit compiler available in the 10.3.2 release, I revisited my projects and
+But now in August 2019, with the OSX 64 Bit compiler available in the 10.3.2 release, I revisited my projects and
 
 - merged my existing modifications with the latest code from Embarcadero,
 - compiled for and tested on OSX platform,
 - and noticed a crash when resizing the app!
 
-> But was able to fix it.
+> But I was able to fix it.
 
 First, instead of letting the application crash I decided to do some logging instead of raising an exception.
 
@@ -227,7 +226,7 @@ procedure TContextOpenGL.DoResize;
 end;
 ```
 
-It was done with a quick and dirty special *instrumentation* in the unit:
+This was done with a quick and dirty special *instrumentation* in the unit:
 
 ````pascal
 const
@@ -244,8 +243,6 @@ end;
 
 Then I could easily see when and where and why the app was crashing.
 
-I will spare you most of the details, except that the call stack shows where the problem is coming from.
-
 ```
 SCannotCreateRenderBuffers was raised/logged
 when user is resizing the app window by dragging the corner with the mouse,
@@ -256,9 +253,10 @@ Render-Puffer für 'TContextOpenGL' können nicht erstellt werden. Prozess RG11 
 
 OSX32 target: I see log messages in PAServer window (Mac).
 Render-Puffer für 'TContextOpenGL' können nicht erstellt werden.
+```
 
-Call stack below: I see this in the IDE tool window.
-
+I will spare you most of the details, except that the call stack showed where the problem came from.
+```
 FMX.Context.Mac.TContextOpenGL.DoResize // <-- the problem surfaces here
 FMX.Types3D.TContext3D.Resize
 FMX.Types3D.TContext3D.SetSize(2098,1546) // <-- but the fix in in here
@@ -286,7 +284,9 @@ But on the OSX platform DoResize is NOT empty.
 In the call stack you can see that the actual implementation in FMX.Context.Mac is called.
 
 From looking at TContext3D.SetSize it appears questionable that Resize is called after destroying buffers and before creating new buffers.
-Of course, this is abstract stuff and it might be ok, you can only find out by looking in the actual implementation.
+Of course, this is abstract stuff and it might be ok.
+
+You may only find out by looking into the actual implementation.
 
 ```pascal
 procedure TContext3D.SetSize(const AWidth, AHeight: Integer);
@@ -298,7 +298,9 @@ begin
     FHeight := AHeight;
     if FWidth < 1 then FWidth := 1;
     if FHeight < 1 then FHeight := 1;
+
     Resize; // <-- This is highly questionable, I would say.
+
     // clear matrix state
     FCurrentStates[TContextState.cs2DScene] := False;
     FCurrentStates[TContextState.cs3DScene] := False;
@@ -310,9 +312,9 @@ end;
 
 > I did an intelligent guess, commented out the Resize method call, and voila, the problematic log messages disappeared !
 
-I am running my application (both 32 bit and 64 bit) on OSX without a problem,
+Now I am running my application (both 32 bit and 64 bit) on OSX without a problem,
 smooth-resizing is working,
-and I seem to have no knowledge of any remaining bugs right now.
+and I seem to have no knowledge of any remaining bugs any more.
 
 In versions of Delphi prior to 10.2.2 they created the exceptions but did not raise them,
 and I remember that I rolled back to not raising these exceptions when they started to raise them.
